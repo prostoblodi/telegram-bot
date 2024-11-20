@@ -1,1 +1,1 @@
-# telegram-bot
+Telegram bot for moktus.com
