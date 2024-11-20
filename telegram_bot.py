@@ -4,19 +4,17 @@ import requests
 # Get token from token.txt file
 token_file = open('token.txt', 'r')
 token = token_file.read().strip() # Remove
-print(f"Token: {token}")
+# print(f"Token: {token}")
 token_file.close()
 
 bot = telebot.TeleBot(token) # Set bot token
 
-title = '' # Announce title
-descr = '' # Announce description
-tags = '' # Announce tags
+data = {} # Data for POST
 
 # Get key from key.txt file
 key_file = open('key.txt', 'r')
 key = key_file.read().strip()
-print(f"Key: {key}")
+# print(f"Key: {key}")
 key_file.close()
 
 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -48,21 +46,21 @@ def handle_messages(message):
     if user_message == "Добавить запись":
         bot.send_message(user_id, "Введите название записи...")
         print("BOT: Введите название записи...")
-        bot.register_next_step_handler(message, set_title)
+        bot.register_next_step_handler(message, set_title, data)
 
 
-def set_title(message):
+def set_title(message, data):
     user_id = message.chat.id  # Get the user ID
-    title = message.text # Get the title
+    data["title"] = message.text # Add title
 
     bot.send_message(user_id, "Теперь опишите свою запись...")
     print("BOT: Теперь опишите свою запись...")
 
-    bot.register_next_step_handler(message, set_descr)
+    bot.register_next_step_handler(message, set_descr, data)
 
-def set_descr(message):
+def set_descr(message, data):
     user_id = message.chat.id # Get ther user ID
-    descr = message.text # Get description
+    data["descr"] = message.text # Get description
 
     bot.send_message(user_id, "Теперь напишите теги через запятую...(Если вы напишите их по-другому, теги могут быть отправленны не корректно.")
     print("BOT: Теперь напишите теги через запятую...")
@@ -71,10 +69,10 @@ def set_descr(message):
 
 def set_tags(message):
     user_id = message.chat.id
-    tags = message.text # Get tags
+    data["tags"] = message.text # Get tags
 
-    bot.send_message(user_id, "Готово! Ваша запись была опубликована на moktus.com!")
-    print("BOT: Готово! Ваша запись была опубликована на moktus.com!")
+    bot.send_message(user_id, "Готово! Ваша запись была опубликована на http://moktus.com!")
+    print("BOT: Готово! Ваша запись была опубликована на http://moktus.com!")
 
     post(message)
 
@@ -84,18 +82,11 @@ def post(message):
     # POST-request for moktus.com
     url = "http://moktus.com/api/add-item"
     header = {"key": key}
-    data = {
-     "title": title,
-     "descr": descr,
-     "tags": tags,
-     "user_id": user_id
-    }
-    print(f"Title: {title}, \n Description: {descr} \n Tags: {tags} \n User id: {user_id}")
+    print(data)
 
     response = requests.post(url, headers=header, json=data)
 
     print(response.status_code)
-    print(response.json())
 
 bot.infinity_polling()
 
