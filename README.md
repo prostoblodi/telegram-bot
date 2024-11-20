@@ -1,1 +1,1 @@
-Telegram bot for moktus.com
+Telegram bot, which uses telebot(python)
