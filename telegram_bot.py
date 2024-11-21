@@ -1,5 +1,12 @@
 from telebot import telebot, types
+from datetime import datetime
+import pytz
 import requests
+import os
+
+# pip install pyTelegramBotAPI
+# pip install pytz
+# pip install requests
 
 # Get token from token.txt file
 token_file = open('token.txt', 'r')
@@ -84,12 +91,55 @@ def post(message):
     # POST-request for moktus.com
     url = "http://moktus.com/api/add-item"
     header = {"key": key}
-    print(data)
 
     response = requests.post(url, headers=header, json=data)
 
-    print(response.status_code)
-    print(response.text)
+    timezone = pytz.timezone("Europe/Riga")
+    current_time = datetime.now(timezone)
+
+    to_log_message = (f"[{current_time}] User {user_id} sends: {data} \n"
+                      f"[{current_time}] Site response is: {response.text} \n")
+
+    log_message(to_log_message)
+# Log POST data
+def log_message(to_log_message):
+    logs_dir = "logs"
+    max_file_size = 1 * 1024 * 1024  # 1 MB
+    max_logs = 5
+
+    # Make directory of logs, if this dir don't exist
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir)
+
+    # Check current logs
+    log_files = sorted(
+        [f for f in os.listdir(logs_dir) if f.startswith("log")],
+        key=lambda x: int(x[3:].split('.')[0] or 1)
+    )
+
+    # If logs more than 5, we rewrite first log
+    if len(log_files) > max_logs:
+        os.remove(os.path.join(logs_dir, log_files[0]))
+        log_files.pop(0)
+
+    # Check current file for writing
+    if log_files:
+        current_log = log_files[-1]
+    else:
+        current_log = "log1.txt"
+
+    log_path = os.path.join(logs_dir, current_log)
+
+    # Check size of current log
+    if os.path.exists(log_path) and os.path.getsize(log_path) >= max_file_size:
+        log_number = int(current_log[3:].split('.')[0] or 1) + 1
+        current_log = f"log{log_number}.txt"
+        log_path = os.path.join(logs_dir, current_log)
+
+    # Writing message into log
+    with open(log_path, "a") as log_file:
+        log_file.write(to_log_message + "\n")
+
 
 bot.infinity_polling()
 
