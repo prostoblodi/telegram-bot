@@ -67,7 +67,7 @@ def set_title(message, data):
 
 def set_descr(message, data):
     user_id = message.chat.id # Get ther user ID
-    data["descr"] = message.text # Get description
+    data["desc"] = message.text # Get description
 
     bot.send_message(user_id, "Теперь напишите теги через запятую...(Если вы напишите их по-другому, теги могут быть отправленны не корректно.")
     print("BOT: Теперь напишите теги через запятую...")
@@ -75,24 +75,27 @@ def set_descr(message, data):
     bot.register_next_step_handler(message, set_tags)
 
 def set_tags(message):
-    user_id = message.chat.id
     data["tags"] = message.text # Get tags
-
-    bot.send_message(user_id, "Готово! Ваша запись была опубликована на http://moktus.com!")
-    print("BOT: Готово! Ваша запись была опубликована на http://moktus.com!")
 
     post(message)
 
 def post(message):
     user_id = message.chat.id
 
-    data["user_id"] = user_id
+    data["userId"] = user_id
 
     # POST-request for moktus.com
     url = "http://moktus.com/api/add-item"
     header = {"key": key}
 
     response = requests.post(url, headers=header, json=data)
+
+    if response.status_code == 200:
+        bot.send_message(user_id, "Ваша запись успешно опубликована на http://moktus.com")
+        print("BOT: Ваша запись успешно опубликована на http://moktus.com")
+    else:
+        bot.send_message(user_id, f"Произошла ошибка во время отправки вашей записи. Код ошибки: {response.status_code}")
+        print(f"BOT: Произошла ошибка во время отправки вашей записи. Код ошибки: {response.status_code}")
 
     timezone = pytz.timezone("Europe/Riga")
     current_time = datetime.now(timezone)
