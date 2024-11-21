@@ -79,6 +79,8 @@ def set_tags(message):
 def post(message):
     user_id = message.chat.id
 
+    data["user_id"] = user_id
+
     # POST-request for moktus.com
     url = "http://moktus.com/api/add-item"
     header = {"key": key}
@@ -87,6 +89,7 @@ def post(message):
     response = requests.post(url, headers=header, json=data)
 
     print(response.status_code)
+    print(response.text)
 
 bot.infinity_polling()
 
