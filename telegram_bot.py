@@ -11,17 +11,15 @@ import os
 # Get token from token.txt file
 token_file = open('token.txt', 'r')
 token = token_file.read().strip() # Remove
-# print(f"Token: {token}")
 token_file.close()
 
 bot = telebot.TeleBot(token) # Set bot token
 
-data = {} # Data for POST
+item_data = {} # Data for POST
 
 # Get key from key.txt file
 key_file = open('key.txt', 'r')
 key = key_file.read().strip()
-# print(f"Key: {key}")
 key_file.close()
 
 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -33,12 +31,15 @@ markup.add(add_item)
 def start_message(message):
     first_name = message.from_user.first_name  # Get user first name
     last_name = message.from_user.last_name  # Get user last name
+    user_id = message.chat.id # Get user id
 
     bot.send_message(
         message.chat.id,
         f"Добро пожаловать, {first_name} {last_name or ''}! Что вы бы хотели сделать?",
         reply_markup=markup
     )
+
+    log_message_generate(f"BOT sent to {first_name} {last_name or ''}({user_id}): Добро пожаловать, {first_name} {last_name or ''}! Что вы бы хотели сделать?")
 
 @bot.message_handler(content_types=['text'])
 def handle_messages(message):
@@ -48,63 +49,76 @@ def handle_messages(message):
     first_name = message.from_user.first_name  # Get user first name
     last_name = message.from_user.last_name  # Get user last name
 
-    print(f"Пользователь {user_id} ({first_name} {last_name or ''}) отправил: {user_message}")
+    log_message_generate(f"{first_name} {last_name or ''}({user_id}) sent: {user_message}")
 
     if user_message == "Добавить запись":
         bot.send_message(user_id, "Введите название записи...")
-        print("BOT: Введите название записи...")
-        bot.register_next_step_handler(message, set_title, data)
+        log_message_generate(f"BOT sent to {first_name} {last_name or ''}({user_id}): Введите название записи... \n")
+        bot.register_next_step_handler(message, set_title, item_data)
 
 
 def set_title(message, data):
-    user_id = message.chat.id  # Get the user ID
+    user_id = message.chat.id
     data["title"] = message.text # Add title
 
+    log_message_generate(f"User {user_id} sent: {message.text}")
+
     bot.send_message(user_id, "Теперь опишите свою запись...")
-    print("BOT: Теперь опишите свою запись...")
+    log_message_generate(f"BOT sent to {user_id}: Теперь опишите свою запись... \n")
+
 
     bot.register_next_step_handler(message, set_descr, data)
 
 def set_descr(message, data):
-    user_id = message.chat.id # Get ther user ID
+    user_id = message.chat.id
     data["desc"] = message.text # Get description
 
-    bot.send_message(user_id, "Теперь напишите теги через запятую...(Если вы напишите их по-другому, теги могут быть отправленны не корректно.")
-    print("BOT: Теперь напишите теги через запятую...")
+    log_message_generate(f"User {user_id} sent: {message.text}")
+
+    bot.send_message(user_id, "Теперь напишите теги через запятую... \n"
+    "(Если вы напишите их по-другому, теги могут быть отправленны не корректно)")
+
+    log_message_generate(f"BOT sent to {user_id}: Теперь напишите теги через запятую... \n"
+    f"(Если вы напишите их по-другому, теги могут быть отправленны не корректно) \n")
 
     bot.register_next_step_handler(message, set_tags)
 
 def set_tags(message):
-    data["tags"] = message.text # Get tags
+    user_id = message.chat.id
+    item_data["tags"] = message.text # Get tags
+
+    log_message_generate(f"User {user_id} sent: {message.text}")
 
     post(message)
 
 def post(message):
     user_id = message.chat.id
 
-    data["userId"] = user_id
+    item_data["userId"] = user_id
 
     # POST-request for moktus.com
     url = "http://moktus.com/api/add-item"
     header = {"key": key}
 
-    response = requests.post(url, headers=header, json=data)
+    response = requests.post(url, headers=header, json=item_data)
 
     if response.status_code == 200:
         bot.send_message(user_id, "Ваша запись успешно опубликована на http://moktus.com")
-        print("BOT: Ваша запись успешно опубликована на http://moktus.com")
+        log_message_generate(f"BOT sent to {user_id}: Ваша запись успешно опубликована на http://moktus.com \n")
     else:
         bot.send_message(user_id, f"Произошла ошибка во время отправки вашей записи. Код ошибки: {response.status_code}")
-        print(f"BOT: Произошла ошибка во время отправки вашей записи. Код ошибки: {response.status_code}")
+        log_message_generate(f"BOT sent to {user_id}: Произошла ошибка во время отправки вашей записи. Код ошибки: {response.status_code} \n")
+        print(f"ERROR WHILE POSTING! RESPONSE CODE IS: {response.status_code}, FULL RESPONSE IS: \n {response.text}")
 
-    timezone = pytz.timezone("Europe/Riga")
-    current_time = datetime.now(timezone)
+    # Log what user POST
+    log_message_generate(f"User {user_id} POST: {item_data}")
 
-    to_log_message = (f"[{current_time}] User {user_id} sends: {data} \n"
-                      f"[{current_time}] Site response is: {response.text} \n")
+    #Log response
+    log_message_generate(f"Sever answer code is: {response.status_code}")
+    log_message_generate(f"Full server answer is: {response.text}")
 
-    log_message(to_log_message)
-# Log POST data
+
+
 def log_message(to_log_message):
     logs_dir = "logs"
     max_file_size = 1 * 1024 * 1024  # 1 MB
@@ -143,6 +157,11 @@ def log_message(to_log_message):
     with open(log_path, "a") as log_file:
         log_file.write(to_log_message + "\n")
 
+def log_message_generate(to_log_message):
+    timezone = pytz.timezone("Europe/Riga")
+    current_time = datetime.now(timezone)
+
+    log_message(f"[{current_time}]" + to_log_message)
 
 bot.infinity_polling()
 
