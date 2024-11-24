@@ -4,6 +4,8 @@ import pytz
 import requests
 import os
 
+from telebot.util import user_link
+
 # pip install pyTelegramBotAPI
 # pip install pytz
 # pip install requests
@@ -61,6 +63,8 @@ def handle_messages(message):
         bot.send_message(user_id, "Введите название записи...", reply_markup=cancel_markup)
         log_message_generate(f"BOT sent to {first_name} {last_name or ''}({user_id}): Введите название записи... \n")
         bot.register_next_step_handler(message, set_title, item_data)
+    elif user_message == "get":
+        get_items(message)
 
 
 def set_title(message, data):
@@ -128,9 +132,9 @@ def set_tags(message):
 
     log_message_generate(f"User {user_id} sent: {message.text}")
 
-    post(message)
+    post_item(message)
 
-def post(message):
+def post_item(message):
     user_id = message.chat.id
 
     item_data["userId"] = user_id
@@ -155,6 +159,16 @@ def post(message):
     #Log response
     log_message_generate(f"Sever answer code is: {response.status_code}")
     log_message_generate(f"Full server answer is: {response.text}")
+
+def get_items(message):
+    user_id = message.chat.id
+    json = {"userId":user_id}
+
+    url = "http://moktus.com/api/get-items"
+    header = {"key": key}
+
+    responce = requests.post(url, headers=header, json=json)
+    print(responce.json())
 
 def log_message(to_log_message):
     logs_dir = "logs"
