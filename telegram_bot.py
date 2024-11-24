@@ -26,6 +26,12 @@ markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 add_item = types.KeyboardButton("Добавить запись")
 markup.add(add_item)
 
+cancel_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+cancel = types.KeyboardButton("Отмена")
+cancel_markup.add(cancel)
+
+print("-"*7 + "BOT STARTED" + "-"*7)
+
 # Start message
 @bot.message_handler(commands=['start'])
 def start_message(message):
@@ -52,13 +58,24 @@ def handle_messages(message):
     log_message_generate(f"{first_name} {last_name or ''}({user_id}) sent: {user_message}")
 
     if user_message == "Добавить запись":
-        bot.send_message(user_id, "Введите название записи...")
+        bot.send_message(user_id, "Введите название записи...", reply_markup=cancel_markup)
         log_message_generate(f"BOT sent to {first_name} {last_name or ''}({user_id}): Введите название записи... \n")
         bot.register_next_step_handler(message, set_title, item_data)
 
 
 def set_title(message, data):
     user_id = message.chat.id
+
+    if message.text == "Отмена":
+        # Cancel item creation
+        bot.send_message(
+            user_id,
+            "Действие отменено.",
+            reply_markup=markup
+        )
+        log_message_generate(f"BOT to {user_id}: Добавление отменено.")
+        return
+
     data["title"] = message.text # Add title
 
     log_message_generate(f"User {user_id} sent: {message.text}")
@@ -71,6 +88,17 @@ def set_title(message, data):
 
 def set_descr(message, data):
     user_id = message.chat.id
+
+    if message.text == "Отмена":
+        # Cancel item creation
+        bot.send_message(
+            user_id,
+            "Добавление отменено.",
+            reply_markup=markup
+        )
+        log_message_generate(f"BOT to {user_id}: Добавление отменено.")
+        return
+
     data["desc"] = message.text # Get description
 
     log_message_generate(f"User {user_id} sent: {message.text}")
@@ -85,6 +113,17 @@ def set_descr(message, data):
 
 def set_tags(message):
     user_id = message.chat.id
+
+    if message.text == "Отмена":
+        # Cancel item creation
+        bot.send_message(
+            user_id,
+            "Добавление отменено.",
+            reply_markup=markup
+        )
+        log_message_generate(f"BOT to {user_id}: Добавление отменено.")
+        return
+
     item_data["tags"] = message.text # Get tags
 
     log_message_generate(f"User {user_id} sent: {message.text}")
@@ -116,8 +155,6 @@ def post(message):
     #Log response
     log_message_generate(f"Sever answer code is: {response.status_code}")
     log_message_generate(f"Full server answer is: {response.text}")
-
-
 
 def log_message(to_log_message):
     logs_dir = "logs"
