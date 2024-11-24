@@ -1,10 +1,9 @@
-from telebot import telebot, types
+import os
 from datetime import datetime
+
 import pytz
 import requests
-import os
-
-from telebot.util import user_link
+from telebot import telebot, types
 
 # pip install pyTelegramBotAPI
 # pip install pytz
