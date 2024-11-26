@@ -73,7 +73,7 @@ def set_title(message, data):
     user_id = message.chat.id
 
     if message.text == "Отмена":
-        # Cancel item creationКакую именно запись вы бы хотели посмотреть?
+        # Cancel item creation
         bot.send_message(
             user_id,
             "Действие отменено.",
