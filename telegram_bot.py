@@ -25,7 +25,8 @@ key_file.close()
 
 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 add_item = types.KeyboardButton("Добавить запись")
-markup.add(add_item)
+check_items = types.KeyboardButton("Посмотреть мои записи")
+markup.add(add_item, check_items)
 
 cancel_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 cancel = types.KeyboardButton("Отмена")
@@ -62,8 +63,10 @@ def handle_messages(message):
         bot.send_message(user_id, "Введите название записи...", reply_markup=cancel_markup)
         log_message_generate(f"BOT sent to {first_name} {last_name or ''}({user_id}): Введите название записи... \n")
         bot.register_next_step_handler(message, set_title, item_data)
-    elif user_message == "get":
-        get_items(message)
+    elif user_message == "Посмотреть мои записи":
+        check_markup = check_items_markup(message)
+        bot.send_message(user_id, "Какую именно запись вы бы хотели посмотреть?", reply_markup=check_markup)
+        bot.register_next_step_handler(message, check_items)
 
 
 def set_title(message, data):
@@ -131,7 +134,40 @@ def set_tags(message):
 
     log_message_generate(f"User {user_id} sent: {message.text}")
 
+
+
+
     post_item(message)
+
+def check_items(message):
+    user_id = message.chat.id
+    user_answer = message.text
+
+    items = get_items(message)
+
+    target_title = user_answer
+    results = [item for item in items if item['title'] == target_title]
+
+    if not results:
+        bot.send_message(user_id, "Я не знаю такой записи!", reply_markup=markup)
+    elif len(results) == 1:
+        bot.send_message(user_id, "Вот ваша запись:", reply_markup=markup)
+        result = next((item for item in results if item['title'] == user_answer), None)
+        bot.send_message(user_id, f"Название: {result['title']} \n \nОписание: {result['description']}")
+    else:
+        bot.send_message(user_id, f"Я нашёл несколько записей по запросу {user_answer}, вот они:", reply_markup=markup)
+        for i in results:
+            bot.send_message(user_id, f"Название: {i['title']} \n \nОписание:{i['description']}")
+
+def check_items_markup(message):
+    items = get_items(message)
+    items_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+    for i in items:
+        item = types.KeyboardButton(i['title'])
+        items_markup.add(item)
+
+    return items_markup
 
 def post_item(message):
     user_id = message.chat.id
@@ -145,10 +181,10 @@ def post_item(message):
     response = requests.post(url, headers=header, json=item_data)
 
     if response.status_code == 200:
-        bot.send_message(user_id, "Ваша запись успешно опубликована на http://moktus.com")
+        bot.send_message(user_id, "Ваша запись успешно опубликована на http://moktus.com", reply_markup=markup)
         log_message_generate(f"BOT sent to {user_id}: Ваша запись успешно опубликована на http://moktus.com \n")
     else:
-        bot.send_message(user_id, f"Произошла ошибка во время отправки вашей записи. Код ошибки: {response.status_code}")
+        bot.send_message(user_id, f"Произошла ошибка во время отправки вашей записи. Код ошибки: {response.status_code}", reply_markup=markup)
         log_message_generate(f"BOT sent to {user_id}: Произошла ошибка во время отправки вашей записи. Код ошибки: {response.status_code} \n")
         print(f"ERROR WHILE POSTING! RESPONSE CODE IS: {response.status_code}, FULL RESPONSE IS: \n {response.text}")
 
@@ -166,8 +202,12 @@ def get_items(message):
     url = "http://moktus.com/api/get-items"
     header = {"key": key}
 
-    responce = requests.post(url, headers=header, json=json)
-    print(responce.json())
+    response = requests.post(url, headers=header, json=json)
+    print(response.json())
+    user_items = response.json()['items']
+    print(user_items)
+
+    return user_items
 
 def log_message(to_log_message):
     logs_dir = "logs"
