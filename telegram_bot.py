@@ -66,14 +66,14 @@ def handle_messages(message):
     elif user_message == "Посмотреть мои записи":
         check_markup = check_items_markup(message)
         bot.send_message(user_id, "Какую именно запись вы бы хотели посмотреть?", reply_markup=check_markup)
+        log_message_generate(f"BOT sent to {first_name} {last_name or ''}({user_id}): Какую именно запись вы бы хотели посмотреть?")
         bot.register_next_step_handler(message, check_items)
-
 
 def set_title(message, data):
     user_id = message.chat.id
 
     if message.text == "Отмена":
-        # Cancel item creation
+        # Cancel item creationКакую именно запись вы бы хотели посмотреть?
         bot.send_message(
             user_id,
             "Действие отменено.",
@@ -143,6 +143,8 @@ def check_items(message):
     user_id = message.chat.id
     user_answer = message.text
 
+    log_message_generate(f"{user_id} sent: {user_answer}")
+
     items = get_items(message)
 
     target_title = user_answer
@@ -150,14 +152,22 @@ def check_items(message):
 
     if not results:
         bot.send_message(user_id, "Я не знаю такой записи!", reply_markup=markup)
+        log_message_generate(f"BOT sent to {user_id}: Я не знаю такой записи!")
     elif len(results) == 1:
         bot.send_message(user_id, "Вот ваша запись:", reply_markup=markup)
+        log_message_generate(f"BOT sent to {user_id}: Вот ваша запись:")
+
         result = next((item for item in results if item['title'] == user_answer), None)
+
         bot.send_message(user_id, f"Название: {result['title']} \n \nОписание: {result['description']}")
+        log_message_generate(f"BOT sent to {user_id}: Название: {result['title']} \n \nОписание: {result['description']}")
     else:
         bot.send_message(user_id, f"Я нашёл несколько записей по запросу {user_answer}, вот они:", reply_markup=markup)
+        log_message_generate(f"BOT sent to {user_id}: Я нашёл несколько записей по запросу {user_answer}, вот они:")
+
         for i in results:
             bot.send_message(user_id, f"Название: {i['title']} \n \nОписание:{i['description']}")
+            log_message_generate(f"BOT sent to {user_id}: Название: {i['title']} \n \nОписание:{i['description']}")
 
 def check_items_markup(message):
     items = get_items(message)
@@ -192,8 +202,8 @@ def post_item(message):
     log_message_generate(f"User {user_id} POST: {item_data}")
 
     #Log response
-    log_message_generate(f"Sever answer code is: {response.status_code}")
-    log_message_generate(f"Full server answer is: {response.text}")
+    log_message_generate(f"SERVER answer code is: {response.status_code}")
+    log_message_generate(f"SERVER full answer is: {response.text} \n")
 
 def get_items(message):
     user_id = message.chat.id
@@ -202,10 +212,13 @@ def get_items(message):
     url = "http://moktus.com/api/get-items"
     header = {"key": key}
 
+    log_message_generate(f"BOT GET ITEMS: json={json}")
+
     response = requests.post(url, headers=header, json=json)
-    print(response.json())
     user_items = response.json()['items']
-    print(user_items)
+
+    log_message_generate(f"SERVER json answer is: {response.json()}")
+    log_message_generate(f"SERVER code answer is: {response.status_code} \n")
 
     return user_items
 
