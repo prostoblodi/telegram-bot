@@ -26,11 +26,18 @@ key_file.close()
 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 add_item = types.KeyboardButton("Добавить запись")
 check_items = types.KeyboardButton("Посмотреть мои записи")
-markup.add(add_item, check_items)
+edit_items = types.KeyboardButton("Редактировать запись")
+markup.add(add_item, check_items, edit_items)
 
 cancel_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 cancel = types.KeyboardButton("Отмена")
 cancel_markup.add(cancel)
+
+edit_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+edit_title = types.KeyboardButton("Название")
+edit_description = types.KeyboardButton("Описание")
+edit_tags = types.KeyboardButton("Теги")
+edit_markup.add(edit_title, edit_description, edit_tags, cancel)
 
 print("-"*7 + "BOT STARTED" + "-"*7)
 
@@ -57,20 +64,33 @@ def handle_messages(message):
     first_name = message.from_user.first_name  # Get user first name
     last_name = message.from_user.last_name  # Get user last name
 
-    log_message_generate(f"{first_name} {last_name or ''}({user_id}) sent: {user_message}")
+    log_message_generate(f"{first_name} {last_name or ''}({user_id}) sent: {user_message} \n")
 
     if user_message == "Добавить запись":
         bot.send_message(user_id, "Введите название записи...", reply_markup=cancel_markup)
-        log_message_generate(f"BOT sent to {first_name} {last_name or ''}({user_id}): Введите название записи... \n")
+        log_message_generate(f"BOT sent to {first_name} {last_name or ''}({user_id}): Введите название записи...")
         bot.register_next_step_handler(message, set_title, item_data)
+
     elif user_message == "Посмотреть мои записи":
-        check_markup = check_items_markup(message)
-        bot.send_message(user_id, "Какую именно запись вы бы хотели посмотреть?", reply_markup=check_markup)
+        items_markup = items_markup_generator(message)
+        if items_markup == 0:
+            return
+        bot.send_message(user_id, "Какую именно запись вы бы хотели посмотреть?", reply_markup=items_markup)
         log_message_generate(f"BOT sent to {first_name} {last_name or ''}({user_id}): Какую именно запись вы бы хотели посмотреть?")
         bot.register_next_step_handler(message, check_items)
 
+    elif user_message == "Редактировать запись":
+        items_markup = items_markup_generator(message)
+        if items_markup == 0:
+            return
+        bot.send_message(user_id, "Какую именно запись вы бы хотели изменить?", reply_markup=items_markup)
+        log_message_generate(f"BOT sent to {first_name} {last_name or ''}({user_id}): Какую именно запись вы бы хотели изменить?")
+        bot.register_next_step_handler(message, edit_item_chooser)
+
 def set_title(message, data):
     user_id = message.chat.id
+
+    log_message_generate(f"User {user_id} sent: {message.text} \n")
 
     if message.text == "Отмена":
         # Cancel item creation
@@ -84,10 +104,8 @@ def set_title(message, data):
 
     data["title"] = message.text # Add title
 
-    log_message_generate(f"User {user_id} sent: {message.text}")
-
     bot.send_message(user_id, "Теперь опишите свою запись...")
-    log_message_generate(f"BOT sent to {user_id}: Теперь опишите свою запись... \n")
+    log_message_generate(f"BOT sent to {user_id}: Теперь опишите свою запись...")
 
 
     bot.register_next_step_handler(message, set_descr, data)
@@ -95,6 +113,8 @@ def set_title(message, data):
 def set_descr(message, data):
     user_id = message.chat.id
 
+    log_message_generate(f"User {user_id} sent: {message.text} \n")
+
     if message.text == "Отмена":
         # Cancel item creation
         bot.send_message(
@@ -102,23 +122,23 @@ def set_descr(message, data):
             "Добавление отменено.",
             reply_markup=markup
         )
-        log_message_generate(f"BOT to {user_id}: Добавление отменено.")
+        log_message_generate(f"BOT sent to {user_id}: Добавление отменено.")
         return
 
     data["desc"] = message.text # Get description
 
-    log_message_generate(f"User {user_id} sent: {message.text}")
+    bot.send_message(user_id, "Теперь напишите теги через запятую... "
+    "(Если вы напишите их по-другому, теги могут быть отправлены не корректно)")
 
-    bot.send_message(user_id, "Теперь напишите теги через запятую... \n"
-    "(Если вы напишите их по-другому, теги могут быть отправленны не корректно)")
+    log_message_generate(f"BOT sent to {user_id}: Теперь напишите теги через запятую... "
+    f"(Если вы напишите их по-другому, теги могут быть отправлены не корректно)")
 
-    log_message_generate(f"BOT sent to {user_id}: Теперь напишите теги через запятую... \n"
-    f"(Если вы напишите их по-другому, теги могут быть отправленны не корректно) \n")
+    bot.register_next_step_handler(message, set_tags, data)
 
-    bot.register_next_step_handler(message, set_tags)
-
-def set_tags(message):
+def set_tags(message, data):
     user_id = message.chat.id
+
+    log_message_generate(f"User {user_id} sent: {message.text}")
 
     if message.text == "Отмена":
         # Cancel item creation
@@ -127,15 +147,10 @@ def set_tags(message):
             "Добавление отменено.",
             reply_markup=markup
         )
-        log_message_generate(f"BOT to {user_id}: Добавление отменено.")
+        log_message_generate(f"BOT sent to {user_id}: Добавление отменено.")
         return
 
-    item_data["tags"] = message.text # Get tags
-
-    log_message_generate(f"User {user_id} sent: {message.text}")
-
-
-
+    data["tags"] = message.text # Get tags
 
     post_item(message)
 
@@ -143,34 +158,95 @@ def check_items(message):
     user_id = message.chat.id
     user_answer = message.text
 
-    log_message_generate(f"{user_id} sent: {user_answer}")
+    log_message_generate(f"User {user_id} sent: {user_answer} \n")
 
     items = get_items(message)
 
-    target_title = user_answer
-    results = [item for item in items if item['title'] == target_title]
+    result = next((item for item in items if item['title'] == user_answer), None)
 
-    if not results:
+    if not result:
         bot.send_message(user_id, "Я не знаю такой записи!", reply_markup=markup)
         log_message_generate(f"BOT sent to {user_id}: Я не знаю такой записи!")
-    elif len(results) == 1:
+    else:
         bot.send_message(user_id, "Вот ваша запись:", reply_markup=markup)
         log_message_generate(f"BOT sent to {user_id}: Вот ваша запись:")
 
-        result = next((item for item in results if item['title'] == user_answer), None)
-
         bot.send_message(user_id, f"Название: {result['title']} \n \nОписание: {result['description']}")
         log_message_generate(f"BOT sent to {user_id}: Название: {result['title']} \n \nОписание: {result['description']}")
-    else:
-        bot.send_message(user_id, f"Я нашёл несколько записей по запросу {user_answer}, вот они:", reply_markup=markup)
-        log_message_generate(f"BOT sent to {user_id}: Я нашёл несколько записей по запросу {user_answer}, вот они:")
 
-        for i in results:
-            bot.send_message(user_id, f"Название: {i['title']} \n \nОписание:{i['description']}")
-            log_message_generate(f"BOT sent to {user_id}: Название: {i['title']} \n \nОписание:{i['description']}")
+def edit_item_chooser(message):
+    user_id = message.chat.id
+    user_answer = message.text
 
-def check_items_markup(message):
+    log_message_generate(f"User {user_id} sent: {user_answer} \n")
+
     items = get_items(message)
+
+    result = next((item for item in items if item['title'] == user_answer), None)
+
+    if not result:
+        bot.send_message(user_id, "Я не знаю такой записи!", reply_markup=markup)
+        log_message_generate(f"BOT sent to {user_id}: Я не знаю такой записи!")
+        return
+
+    bot.send_message(user_id, "Что бы вы хотели бы изменить в этой записи?", reply_markup=edit_markup)
+    log_message_generate(f"BOT sent to {user_id}: Что бы вы хотели бы изменить в этой записи?")
+
+    bot.register_next_step_handler(message, edit_to_edit_chooser, result['id'])
+
+def edit_to_edit_chooser(message, item_id,):
+    user_answer = message.text
+    user_id = message.chat.id
+
+    log_message_generate(f"User {user_id} sent: {user_answer} \n")
+
+    if user_answer == 'Название':
+        bot.send_message(user_id, "Введите новое название...", reply_markup=cancel_markup)
+        log_message_generate(f"BOT sent to {user_id}: Введите новое название...")
+
+        bot.register_next_step_handler(message, edit_editor, item_id, 'title')
+    elif user_answer == 'Описание':
+        bot.send_message(user_id, "Введите новое описание...", reply_markup=cancel_markup)
+        log_message_generate(f"BOT sent to {user_id}: Введите новое описание...")
+
+        bot.register_next_step_handler(message, edit_editor, item_id, 'desc')
+    elif user_answer == 'Теги':
+        bot.send_message(user_id, "Введите новые теги...", reply_markup=cancel_markup)
+        log_message_generate(f"BOT sent to {user_id}: Введите новые теги...")
+
+        bot.register_next_step_handler(message, edit_editor, item_id, 'tags')
+    else:
+        bot.send_message(user_id, "Нет такого варианта ответа!", reply_markup=markup)
+        log_message_generate(f"BOT sent to {user_id}: Нет такого варианта ответа!")
+
+def edit_editor(message, item_id, to_edit):
+    user_id = message.chat.id
+    user_answer = message.text
+
+    log_message_generate(f"User {user_id} sent: {user_answer}")
+
+    json = {'userId': user_id, 'itemId': item_id, f'{to_edit}': user_answer}
+    header = {'key': key}
+    url = "http://moktus.com/api/update-item"
+
+    log_message_generate(f"USER {user_id} edit item {item_id}'s {to_edit} to {user_answer}")
+
+    response = requests.post(url, headers=header, json=json)
+
+    log_message_generate(f"SERVER json answer is: {response.json()}")
+    log_message_generate(f"SERVER code answer is: {response.status_code}")
+
+    if response.status_code == 200:
+         bot.send_message(user_id, "Запись успешно отредактирована!")
+         log_message_generate(f"BOT sent to {user_id}: Запись успешно отредактирована!")
+    else:
+         bot.send_message(user_id, f"Произошла ошибка во время отправки отредактированной записи, код ошибки: {response.status_code}")
+         log_message_generate(f"BOT sent to {user_id}: Произошла ошибка во время отправки отредактированной записи, код ошибки: {response.status_code}")
+
+def items_markup_generator(message):
+    items = get_items(message)
+    if items == 0:
+        return 0
     items_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
     for i in items:
@@ -196,29 +272,44 @@ def post_item(message):
     else:
         bot.send_message(user_id, f"Произошла ошибка во время отправки вашей записи. Код ошибки: {response.status_code}", reply_markup=markup)
         log_message_generate(f"BOT sent to {user_id}: Произошла ошибка во время отправки вашей записи. Код ошибки: {response.status_code} \n")
-        print(f"ERROR WHILE POSTING! RESPONSE CODE IS: {response.status_code}, FULL RESPONSE IS: \n {response.text}")
+        print(f"ERROR WHILE POSTING! RESPONSE CODE IS: {response.status_code}, JSON RESPONSE IS: \n {response.json()}")
 
     # Log what user POST
     log_message_generate(f"User {user_id} POST: {item_data}")
 
     #Log response
     log_message_generate(f"SERVER answer code is: {response.status_code}")
-    log_message_generate(f"SERVER full answer is: {response.text} \n")
+    log_message_generate(f"SERVER json answer is: {response.text} \n")
 
 def get_items(message):
     user_id = message.chat.id
-    json = {"userId":user_id}
+    json = {"userId":user_id, 'limit':10, 'offset':0}
 
     url = "http://moktus.com/api/get-items"
     header = {"key": key}
 
-    log_message_generate(f"BOT GET ITEMS: json={json}")
+    log_message_generate(f"USER {user_id} get items, json is: {json}")
 
     response = requests.post(url, headers=header, json=json)
-    user_items = response.json()['items']
 
     log_message_generate(f"SERVER json answer is: {response.json()}")
     log_message_generate(f"SERVER code answer is: {response.status_code} \n")
+
+    if 'items' in response.json():
+        user_items = response.json()['items']
+    else:
+        bot.send_message(user_id, f"Произошла ошибка при получении ваших записей, код ошибки: {response.status_code}")
+        print(f"ERROR WHILE GETTING, RESPONSE CODE IS: {response.status_code}, JSON ANSWER IS: {response.json()}")
+        return 0
+    name_counts = {}
+
+    for i in user_items:
+        title = i['title']
+        if title in name_counts:
+            name_counts[title] += 1
+            i['title'] = f"{title} ({name_counts[title]})"
+        else:
+            name_counts[title] = 1
 
     return user_items
 
