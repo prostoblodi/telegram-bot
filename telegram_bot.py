@@ -188,6 +188,10 @@ def edit_item_chooser(message):
         bot.send_message(user_id, "Я не знаю такой записи!", reply_markup=markup)
         log_message_generate(f"BOT sent to {user_id}: Я не знаю такой записи!")
         return
+    elif user_answer == 'Отмена':
+        bot.send_message(user_id, "Редактирование отменено", reply_markup=markup)
+        log_message_generate(f"BOT sent to {user_id}: Редактирование отменено")
+        return
 
     bot.send_message(user_id, "Что бы вы хотели бы изменить в этой записи?", reply_markup=edit_markup)
     log_message_generate(f"BOT sent to {user_id}: Что бы вы хотели бы изменить в этой записи?")
@@ -215,6 +219,10 @@ def edit_to_edit_chooser(message, item_id,):
         log_message_generate(f"BOT sent to {user_id}: Введите новые теги...")
 
         bot.register_next_step_handler(message, edit_editor, item_id, 'tags')
+    elif user_answer == 'Отмена':
+        bot.send_message(user_id, "Редактирование отменено", reply_markup=markup)
+        log_message_generate(f"BOT sent to {user_id}: Редактирование отменено")
+        return
     else:
         bot.send_message(user_id, "Нет такого варианта ответа!", reply_markup=markup)
         log_message_generate(f"BOT sent to {user_id}: Нет такого варианта ответа!")
@@ -224,6 +232,11 @@ def edit_editor(message, item_id, to_edit):
     user_answer = message.text
 
     log_message_generate(f"User {user_id} sent: {user_answer}")
+
+    if user_answer == 'Отмена':
+        bot.send_message(user_id, "Редактирование отменено", reply_markup=markup)
+        log_message_generate(f"BOT sent to {user_id}: Редактирование отменено")
+        return
 
     json = {'userId': user_id, 'itemId': item_id, f'{to_edit}': user_answer}
     header = {'key': key}
