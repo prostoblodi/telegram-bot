@@ -23,6 +23,11 @@ key_file = open('key.txt', 'r')
 key = key_file.read().strip()
 key_file.close()
 
+api_urls_file = open('urls.txt', 'r')
+api_urls = api_urls_file.read().strip()
+api_urls_list = api_urls.split(',')
+api_urls_file.close()
+
 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 add_item = types.KeyboardButton("Добавить запись")
 check_items = types.KeyboardButton("Посмотреть мои записи")
@@ -240,7 +245,7 @@ def edit_editor(message, item_id, to_edit):
 
     json = {'userId': user_id, 'itemId': item_id, f'{to_edit}': user_answer}
     header = {'key': key}
-    url = "http://moktus.com/api/update-item"
+    url = api_urls_list[2]
 
     log_message_generate(f"USER {user_id} edit item {item_id}'s {to_edit} to {user_answer}")
 
@@ -274,7 +279,7 @@ def post_item(message):
     item_data["userId"] = user_id
 
     # POST-request for moktus.com
-    url = "http://moktus.com/api/add-item"
+    url = api_urls_list[0]
     header = {"key": key}
 
     response = requests.post(url, headers=header, json=item_data)
@@ -298,7 +303,8 @@ def get_items(message):
     user_id = message.chat.id
     json = {"userId":user_id, 'limit':10, 'offset':0}
 
-    url = "http://moktus.com/api/get-items"
+    url = api_urls_list[1]
+
     header = {"key": key}
 
     log_message_generate(f"USER {user_id} get items, json is: {json}")
